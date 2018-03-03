@@ -2,7 +2,7 @@
 #### A bot that does random things
 
 ## Features
-* Retrieve a funny [Quote of the Day](http://quotes.rest/#!/qod/get_qod) from the [Quotes REST service](http://quotes.rest/), as well as speak it using the [Discord's Text-to-Speech feature](https://support.discordapp.com/hc/en-us/articles/212517297-Text-to-Speech-101).
+* Retrieve a funny [Quote of the Day](http://quotes.rest/#!/qod/get_qod) from the [Quotes REST service](http://quotes.rest/), as well as speak it using [Discord's Text-to-Speech feature](https://support.discordapp.com/hc/en-us/articles/212517297-Text-to-Speech-101).
 * Search Google and post the first result.
 * Retrieve [xkcd](http://www.xkcd.com) webcomics.
 * Instant [Rick Roll](https://en.wikipedia.org/wiki/Rickrolling).
@@ -140,7 +140,7 @@ audio_name[] = Gourmet Race from Kirby SuperStar
 `!moo` - Same as [Debian Linux's `apt-get moo` command](https://unix.stackexchange.com/questions/92185/whats-the-story-behind-super-cow-powers).
 
 ### Voice commands:  
-`!audio [selector]` - Plays specified audio to currently set voice channel. Use without selector to see available MP3 files.  
+`!audio [selector]` - Plays specified audio to currently set voice channel. Use without selector to see available audio files.  
 `!leave` - Stops playing audio and leaves the voice channel.  
 `!switch_voice <selector>` - Change selected voice channel.  
 `!list_voice` - Lists configured voice channels.  
@@ -153,7 +153,7 @@ audio_name[] = Gourmet Race from Kirby SuperStar
 `!reset` - Forces disconnect and reconnect.
 
 ### Testing commands:  
-`!debug` - Dumps the last 2000 characters of log file to a direct message to you.  
+`!debug` - Dumps the last 2000 characters of log file.  
 `!execption` - For tesing purposes: Throws an exception.
 
 ### Admin commands (only work if you are the owner of the bot):  
