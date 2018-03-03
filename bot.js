@@ -140,12 +140,11 @@ if (googlesearch == "yes") {
 
 //We need to set some variables for later.
 var cow = '```         (__) \n         (oo) \n   /------\\/ \n  / |    ||   \n *  /\\---/\\ \n    ~~   ~~   \n...."Have you mooed today?"...```';
-var usage = "Standard commands:\n`!quote [tts option]` - Displays funny quote-of-the-day from the Quotes REST API. Add the `tts` option to use Discord's `/tts` feature with it.\n`!search <query>` - Display the first Google result for that query in the chat.\n`!xkcd [comic # or 'random' ]` - Fetch latest xkcd comic, specify number to show spcified comic, or specify `random` to get random comic.\n`!rick [parameter]` - Instant RickRoll, type `!rick` without extra parameter to show available options.\n`!s race` or `!snail race` - Starts a normal Snail Race, but the bot also joins automatically. Feature may or may not be available on this server. Requires the Snail Racing bot.\n`!open the pod bay doors` - Try it.\n`!moo` - Moos.\n\nVoice commands:\n`!audio [selector]` - Plays specified audio to currently set voice channel. Use without selector to see available MP3 files.\n`!leave` - Stops playing audio and leaves the voice channel.\n`!switch_voice <selector>` - Change selected voice channel.\n`!list_voice` - Lists configured voice channels.\n`!set_voice <channel_id>` - Manually set voice channel ID.\n`!stream <YouTube video ID>` - Streams the audio of the video matching the provided ID.\n`!yt <keywords>` - Streams the audio of the first video result matching the specified keywords.\n\nScript commands:\n`!reconfig` - Reload values from `" + configFile + "`.\n`!reset` - Forces disconnect and reconnect.\n\nTesting commands:\n`!debug` - Dumps the last 2000 characters of log file to a direct message to you.\n`!exception` - For tesing purposes: Throws an exception.\n\nAdmin commands (only work if you are the owner of the bot):\n`!shutdown` - Posts a notice of going offline, dumps the last 1000 characters of the log, disconnects Discord socket, syncs filesystem, and exits NodeJS runtime.\n`!clear` - Deletes the log file.\n`!safemode` - Sets the variable to enter Safe Mode.\n\nDeprecated (no longer functional) commands:\n`!videos` - Used to display most recent videos from several meme channels.\n\n\nFind me on GitHub: https://github.com/geoffreycs/hal9000-bot";
+var usage = ["Standard commands:\n`!quote [tts option]` - Displays funny quote-of-the-day from the Quotes REST API. Add the `tts` option to use Discord's `/tts` feature with it.\n`!search <query>` - Display the first Google result for that query in the chat.\n`!xkcd [comic # or 'random' ]` - Fetch latest xkcd comic, specify number to show spcified comic, or specify `random` to get random comic.\n`!rick [parameter]` - Instant RickRoll, type `!rick` without extra parameter to show available options.\n`!s race` or `!snail race` - Starts a normal Snail Race, but the bot also joins automatically. Feature may or may not be available on this server. Requires the Snail Racing bot.\n`!open the pod bay doors` - Try it.\n`!moo` - Moos.\n\nVoice commands:\n`!audio [selector]` - Plays specified audio to currently set voice channel. Use without selector to see available MP3 files.\n`!leave` - Stops playing audio and leaves the voice channel.\n`!switch_voice <selector>` - Change selected voice channel.\n`!list_voice` - Lists configured voice channels.\n`!set_voice <channel_id>` - Manually set voice channel ID.\n`!stream <YouTube video ID>` - Streams the audio of the video matching the provided ID.\n`!yt <keywords>` - Streams the audio of the first video result matching the specified keywords.\n\nScript commands:", "`!reconfig` - Reload values from configuration.\n`!reset` - Forces disconnect and reconnect.\n\nTesting commands:\n`!debug` - Dumps the last 2000 characters of log file to a direct message to you.\n`!exception` - For tesing purposes: Throws an exception.\n\nAdmin commands (only work if you are the owner of the bot):\n`!shutdown` - Dumps the last part of the log and exits.\n`!clear` - Deletes the log file.\n`!safemode` - Sets the variable to enter Safe Mode.\n\nDeprecated (no longer functional) commands:\n`!videos` - Used to display most recent videos from several meme channels.\n\n\nFind me on GitHub: https://github.com/geoffreycs/hal9000-bot"];
 var clogged = "Something clogged up in the tubes. Notify @" + your_account + "if this issue persists.";
 var google_fail = "An error occured. Some causes could be no results found, Google CSE API is down, or there's a bug in the code.\n\nIf this persists, contact Geoffrey at @PosixMaster#9116.\n\n\nDebug info for Geoffrey:\n```";
 var startup = true;
 var halboot = true;
-var operation = usage;
 var limited = "The bot is currently in safe mode. Available functions are limited to:\n`!reconfig` - Reload configuration.\n`!list_voice` - List configured voice channels.\n`!reset` - Disconnects and reconnects socket.\n`!debug` - Dumps the latter 2000 characters of the log file.\n`!exception` - Invokes exception for testing.\n`!shutdown` - Calls `notice()`, dumps last 1000 characters of log file, executes `sync` on POSIX/*nix, and shutsdown NodeJS instance. May only be used by bot owner.\n`!force_normal` - Forces script to reenter normal operation. May only be used by bot owner. Do not invoke unless you know what you are doing.\n\nAll other functions are currently disabled.";
 var safe_mode = false;
 
@@ -201,7 +200,9 @@ function reloadConfig(channelID) {
             to: channelID,
             message: "Reconfiguration success."
         });
-        normalMode(channelID, true);
+        if (safe_mode == false) {
+            normalMode(channelID, true);
+        }
     }
     catch(e) {
         bot.sendMessage({
@@ -218,7 +219,6 @@ function safeMode(channelID) {
         to: channelID,
         message: "!leave"
     });
-    usage = limited;
     safe_mode = true;
     bot.sendMessage({
         to: channelID,
@@ -232,7 +232,6 @@ function normalMode(channelID, success) {
         output = "Safe Mode automatically exited. Normal operation has resumed. Have a nice day!"
     }
     safe_mode = false;
-    usage = operation;
     bot.sendMessage({
         to: channelID,
         message: output
@@ -472,6 +471,25 @@ function turnOff(error, response) {
     process.exit(-1);
 }
 
+function sendHelp(channelID, i) {
+    bot.sendMessage({
+        to: channelID,
+        message: usage[i]
+    }, function(e, r) {
+        if (i < usage.length) {
+            i++
+            sendHelp(channelID, i);
+        }
+    });
+}
+
+function sendSafe(channelID) {
+    bot.sendMessage({
+        to: channelID,
+        message: limited
+    });
+}
+
 bot.on("ready", function(event) {
     logger.info("Socket connected.");
     logger.info("Logged in as: " + bot.username + " - (" + bot.id + ")");
@@ -549,10 +567,13 @@ bot.on("message", function(user, userID, channelID, message, event) {
                     };
                 };
                 if (command == "help") {
-                    bot.sendMessage({
-                        to: channelID,
-                        message: usage
-                    });
+                    var i = 0;
+                    if (safe_mode == false) {
+                        sendHelp(channelID, i);
+                    }
+                    else {
+                        sendSafe(channelID);
+                    }
                 }
                 if (command == "moo") {
                     if (safe_mode == true) {
