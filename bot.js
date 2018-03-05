@@ -38,7 +38,8 @@ logger.info("OS loaded.")
 
 const commandLineArgs = require('command-line-args')
 const optionDefinitions = [
-    { name: 'config', type: String, multiple: false, defaultOption: true }
+    { name: 'config', type: String, multiple: false, defaultOption: true },
+    { name: 'songs', type: String, multiple: false, defaultOption: false }
 ];
 const cliOptions = commandLineArgs(optionDefinitions, { partial: true });
 var configFile;
@@ -48,6 +49,14 @@ if (cliOptions.config == undefined) {
 }
 else {
     configFile = cliOptions.config;
+}
+var songsFile;
+if (cliOptions.songs == undefined) {
+    songsFile = "songs.ini";
+    logger.warn("No songs file specified. Defaulting to songs.ini");
+}
+else {
+    songsFile = cliOptions.songs;
 }
 logger.info("Command-line arguments loaded and parsed.")
 
@@ -82,12 +91,12 @@ var googlesearch  = config.controls.googlesearch;
 
 var library;
 try {
-    library = ini.parse(fs.readFileSync('./songs.ini', 'utf-8'));
-    logger.info("songs.ini parsed.")
+    library = ini.parse(fs.readFileSync(songsFile, 'utf-8'));
+    logger.info(songsFile + " parsed.")
 }
 catch(e) {
     if (audio_player == "yes") {
-        throw "Song list (songs.ini) not found. This file is required for the bot to use the local audio functionality. Refusing to continue execution."
+        throw "Song list (" + songsFile + ") not found. This file is required for the bot to use the local audio functionality. Refusing to continue execution."
     }
 }
 
@@ -186,7 +195,7 @@ function reloadConfig(channelID) {
         voice_names = config.account.voice_name;
         audio_player = config.controls.voice;
         if (audio_player == "yes") {
-            library = ini.parse(fs.readFileSync('./songs.ini', 'utf-8'));
+            library = ini.parse(fs.readFileSync(songsFile, 'utf-8'));
             audio_files = library.audio_file;
             audio_names = library.audio_name;
         }

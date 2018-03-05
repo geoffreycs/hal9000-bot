@@ -45,9 +45,12 @@ The bot is written for [NodeJS](https://nodejs.org/en/), a [JavaScript](https://
 Next, you need to download the actual bot. You can download it as a [zip file from GitHub](https://github.com/geoffreycs/hal9000-bot/archive/master.zip), or you can use the command-line `git` program:
 ```
 $ git clone https://github.com/geoffreycs/hal9000-bot.git
-```
+```  
+You may also download the bundled version. It functions exactly the same as the master branch except it doesn't require external dependencies. [More information and link to download available here.](https://github.com/geoffreycs/hal9000-bot/tree/bundled)
+
 If you downloaded the zip file, unpack it. Either method, move into the directory where `bot.js` and the other main files are located. If you are on Windows and doing this with File Explorer, hold down `Shift` while right-clicking on a blank space, and choose "Open command window here." On Linux or another *nix system, your file manager may have an option to open in the terminal. If not, open the terminal manually and `cd` into the directory.  
-Once you are in the correct directory in a command line, install the dependencies with:
+
+If you are using the bundled version, you can skip to the next step. Once you are in the correct directory in a command line, install the dependencies with:
 ```
 $ npm install
 ```
@@ -55,14 +58,18 @@ Now open up `config.ini` with your favorite text editing software and set the co
 Once configuration is complete, it is now time to run your bot, granted that you've added it to at least one server.
 
 ## Command Line Usage
-```node bot.js [[--config] <./path/to/config/file.ini>]```  
+```node bot.js [[--config] <./path/to/config/file.ini>] [--songs <./path/to/songs/file.ini>```  
 ### Options
 ```--config``` - Allows user to specify an INI configuration file. Not required.  
 ```./path/to/config/file.ini``` - Path to INI configuration file. May be passed with or without `--config` flag. If not passed, configuration file defaults to `./config.ini`.  
+```--songs <./path/to/songs/file.ini>``` - Allows user to specify an INI song list. Only required for local audio functionality. If not passed, songs file defaults to `songs.ini`.
 ### Examples
 ```
 $ node bot.js --config alt.ini
+$ node bot.js --config alt.ini --songs classical.ini
 $ node bot.js alt.ini 
+$ node bot.js alt.ini --songs classical.ini
+$ node bot.js --songs classical.ini
 $ node bot.js
 ```
 
