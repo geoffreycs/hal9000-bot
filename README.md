@@ -122,8 +122,7 @@ allowed_channels[] = 304070211139665920
 `ffmpeg = ` - Path to an [FFMpeg](https://www.ffmpeg.org/) binary. On most Linux distributions and on many *nix systems will be `/usr/bin/ffmpeg`. Requires FFMpeg [to be installed](https://www.ffmpeg.org/download.html). Only required to use audio functionality.  
 `youtube_key = ` - [YouTube Data API v3 key](https://developers.google.com/youtube/v3/). Only required for YouTube audio streaming functionality.
 
-### `songs.ini` Store
-File must be named `songs.ini` and placed in same directory as the `bot.js` file. Required to use local audio streaming functionality.  
+### Songs list Store
 
 `audio_file[] = ` - Path to audio file. Must be an audio-only file. Video files with audio tracks will not work. Relative paths are fine.  
 `audio_name[] = ` - User-friendly name of audio track.  
