@@ -209,7 +209,7 @@ function reloadConfig(channelID) {
             to: channelID,
             message: "Reconfiguration success."
         });
-        if (safe_mode == false) {
+        if (safe_mode == true) {
             normalMode(channelID, true);
         }
     }

@@ -48,6 +48,8 @@ $ git clone https://github.com/geoffreycs/hal9000-bot.git
 ```  
 You may also download the bundled version. It functions exactly the same as the master branch except it doesn't require external dependencies. [More information and link to download available here.](https://github.com/geoffreycs/hal9000-bot/tree/bundled)
 
+Besides the bundled version, another version with a basic graphical user interface is available. From the perspective of Discord, it is exactly the same. The interface allows for reconfiguring, toggling safe mode, reconnecting, and shutting down the bot. It also has an imitation scrolling console that mimics the behavior of the Winston logger on the system console. The last thing it can do is that it uses push notifications to alert you to safe mode being entered, safe mode being exited, or a reconfiguration occuring. [More information and instructions available here.](https://github.com/geoffreycs/hal9000-bot/tree/nw.js)
+
 If you downloaded the zip file, unpack it. Either method, move into the directory where `bot.js` and the other main files are located. If you are on Windows and doing this with File Explorer, hold down `Shift` while right-clicking on a blank space, and choose "Open command window here." On Linux or another *nix system, your file manager may have an option to open in the terminal. If not, open the terminal manually and `cd` into the directory.  
 
 If you are using the bundled version, you can skip to the next step. Once you are in the correct directory in a command line, install the dependencies with:
