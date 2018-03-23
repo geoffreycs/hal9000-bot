@@ -477,7 +477,7 @@ function turnOff(error, response) {
     }
     bot.disconnect();
     bot = undefined;
-    process.exit(-1);
+    process.exit();
 }
 
 function sendHelp(channelID, i) {
