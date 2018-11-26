@@ -1,4 +1,5 @@
-console.log("Beginning script execution.");
+console.log("JS log: Beginning script execution.");
+console.info("JS log: Logging will be taken over by Winston.")
 
 //Always set up logging before anything else.
 var logger = require("winston");
@@ -14,8 +15,10 @@ logger.add(logger.transports.Console, {
 logger.add(logger.transports.File, {
     filename: "happenings.log"
 });
+console.log("JS log: Winston has been set up. Standard console output will no longer be used.")
 logger.level = 'debug';
 logger.info("Normal execution beginning on " + getDateTime());
+logger.verbose("Logs are being written out to ./happenings.log")
 
 function getDateTime() {
     var date = new Date();
@@ -34,12 +37,13 @@ function getDateTime() {
 }
 
 const os = require('os');
-logger.info("OS loaded.")
+logger.debug("OS loaded.")
+
+var waitUntil = require('wait-until')
 
 const commandLineArgs = require('command-line-args')
 const optionDefinitions = [
-    { name: 'config', type: String, multiple: false, defaultOption: true },
-    { name: 'songs', type: String, multiple: false, defaultOption: false }
+    { name: 'config', type: String, multiple: false, defaultOption: true }
 ];
 const cliOptions = commandLineArgs(optionDefinitions, { partial: true });
 var configFile;
@@ -50,22 +54,14 @@ if (cliOptions.config == undefined) {
 else {
     configFile = cliOptions.config;
 }
-var songsFile;
-if (cliOptions.songs == undefined) {
-    songsFile = "songs.ini";
-    logger.warn("No songs file specified. Defaulting to songs.ini");
-}
-else {
-    songsFile = cliOptions.songs;
-}
-logger.info("Command-line arguments loaded and parsed.")
+
 
 var ini = require('ini');
-logger.info("ini loaded.");
+logger.debug("ini loaded.");
 var config;
 try {
     config = ini.parse(fs.readFileSync(configFile, 'utf-8'));
-    logger.info("" + configFile + " parsed.")
+    logger.verbose("" + configFile + " parsed.")
 }
 catch(e) {
     throw "Configuration file (" + configFile + ") not found. This file is required for the bot to do anything. Refusing to continue execution."
@@ -80,6 +76,16 @@ var bot_name = config.account.bot_name;
 var channels = config.account.general;
 var voiceID = config.account.default_voice;
 var whitelist = config.channels.allowed_channels
+var songarray = [];
+var voiceLock = false;
+var lastYT;
+var audioDone = false;
+var alreadyFired = false;
+var audioErrors = 0;
+var maxerrors = Number(config.controls.maxerrors);
+logger.info("Applying logging level from config. I'll either shut up now or keep yakking.")
+logger.level = config.controls.loglevel
+
 
 //Enable or disable features
 var snail_race = config.controls.snail;
@@ -89,26 +95,15 @@ var qodapi = config.controls.quote;
 var ttsquote = config.controls.tts;
 var googlesearch  = config.controls.googlesearch;
 
-var library;
-try {
-    library = ini.parse(fs.readFileSync(songsFile, 'utf-8'));
-    logger.info(songsFile + " parsed.")
-}
-catch(e) {
-    if (audio_player == "yes") {
-        throw "Song list (" + songsFile + ") not found. This file is required for the bot to use the local audio functionality. Refusing to continue execution."
-    }
-}
-
 //First of all, we need to load the dependencies we downloaded!
 var droid = require("discord.io");
-logger.info("Discord.io loaded.");
+logger.debug("Discord.io loaded.");
 var xkcd = require('xkcd-api');
-logger.info("xkcd-api loaded.");
+logger.debug("xkcd-api loaded.");
 var sys = require('sys');
-logger.info("sys loaded");
+logger.debug("sys loaded");
 const fetch = require('node-fetch');
-logger.info("Node-fetch loaded");
+logger.debug("Node-fetch loaded");
 
 //Load YouTube audio functionaility if requested
 var youtube;
@@ -124,13 +119,13 @@ if (yt_player == "yes") {
         "queueParallelism": 2,                  // How many parallel downloads/encodes should be started?
         "progressTimeout": 2000                 // How long should be the interval of the progress reports
     });
-    logger.info("YouTube MP3 Downloader loaded.");
+    logger.debug("YouTube MP3 Downloader loaded.");
     search = require('youtube-search');
     opts = {
         maxResults: 1,
         key: config.audio.youtube_key
     };
-    logger.info("youtube-search loaded.");
+    logger.debug("youtube-search loaded.");
 }
 
 //Prepare Google Custom Search if requested
@@ -139,7 +134,7 @@ var language;
 var results = 1;
 if (googlesearch == "yes") {
     GoogleSearch = require('google-search');
-    logger.info("Google CSE API loaded.");
+    logger.debug("Google CSE API loaded.");
     googleSearch = new GoogleSearch({
         key: config.google.api_key,
         cx: config.google.api_cx
@@ -149,8 +144,9 @@ if (googlesearch == "yes") {
 
 //We need to set some variables for later.
 var cow = '```         (__) \n         (oo) \n   /------\\/ \n  / |    ||   \n *  /\\---/\\ \n    ~~   ~~   \n...."Have you mooed today?"...```';
-var usage = ["Standard commands:\n`!quote [tts option]` - Displays funny quote-of-the-day from the Quotes REST API. Add the `tts` option to use Discord's `/tts` feature with it.\n`!search <query>` - Display the first Google result for that query in the chat.\n`!xkcd [comic # or 'random' ]` - Fetch latest xkcd comic, specify number to show spcified comic, or specify `random` to get random comic.\n`!rick [parameter]` - Instant RickRoll, type `!rick` without extra parameter to show available options.\n`!s race` or `!snail race` - Starts a normal Snail Race, but the bot also joins automatically. Feature may or may not be available on this server. Requires the Snail Racing bot.\n`!open the pod bay doors` - Try it.\n`!moo` - Moos.\n\nVoice commands:\n`!audio [selector]` - Plays specified audio to currently set voice channel. Use without selector to see available audio files.\n`!leave` - Stops playing audio and leaves the voice channel.\n`!switch_voice <selector>` - Change selected voice channel.\n`!list_voice` - Lists configured voice channels.\n`!set_voice <channel_id>` - Manually set voice channel ID.\n`!stream <YouTube video ID>` - Streams the audio of the video matching the provided ID.\n`!yt <keywords>` - Streams the audio of the first video result matching the specified keywords.\n\nScript commands:", "`!reconfig` - Reload values from configuration.\n`!reset` - Forces disconnect and reconnect.\n\nTesting commands:\n`!debug` - Dumps the last 2000 characters of log file.\n`!exception` - For tesing purposes: Throws an exception.\n\nAdmin commands (only work if you are the owner of the bot):\n`!shutdown` - Dumps the last part of the log and exits.\n`!clear` - Deletes the log file.\n`!safemode` - Sets the variable to enter Safe Mode.\n\nDeprecated (no longer functional) commands:\n`!videos` - Used to display most recent videos from several meme channels.\n\n\nFind me on GitHub: https://github.com/geoffreycs/hal9000-bot"];
-var clogged = "Something clogged up in the tubes. Notify @" + your_account + "if this issue persists.";
+var usage = ["Standard commands:\n`!quote [tts option]` - Displays funny quote-of-the-day from the Quotes REST API. Add the `tts` option to use Discord's `/tts` feature with it.\n`!search <query>` - Display the first Google result for that query in the chat.\n`!xkcd [comic # or 'random' ]` - Fetch latest xkcd comic, specify number to show spcified comic, or specify `random` to get random comic.\n`!rick [parameter]` - Instant RickRoll, type `!rick` without extra parameter to show available options.\n`!s race` or `!snail race` - Starts a normal Snail Race, but the bot also joins automatically. Feature may or may not be available on this server. Requires the Snail Racing bot.\n\n", "Stupid stuff:\n`!open the pod bay doors` - Try it.\n`!moo` - Moos.\n`!borg` - Holdover from the old days.\n\nVoice commands:\n`!next` - Jumps to next entry on playlist.\n`!switch_voice <selector>` - Change selected voice channel.\n`!list_voice` - Lists configured voice channels.\n`!set_voice <channel_id>` - Manually set voice channel ID.\n`!stream <YouTube video ID>` - Streams the audio of the video matching the provided ID.\n`!yt <keywords>` - Streams the audio of the first video result matching the specified keywords.\n`!playlist` - Lists queued audio files.\n\nScript commands:", "`!reconfig` - Reload values from configuration.\n`!reset` - Forces disconnect and reconnect.\n\nTesting commands:\n`!debug` - Dumps the last 2000 characters of log file.\n`!exception` - For tesing purposes: Throws an exception.\n\nAdmin commands (only work if you are the owner of the bot):\n`!shutdown` - Dumps the last part of the log and exits.\n`!clear` - Deletes the log file.\n`!safemode` - Sets the variable to enter Safe Mode.\n\nDeprecated (no longer functional) commands:\n`!videos` - Used to display most recent videos from several meme channels.\n`!audio [selector]` - Previously played a local audio file to currently set voice channel. It was mess to maintain and integrate with the playlist-based YouTube system.\n\n\nFind me on GitHub: https://github.com/geoffreycs/hal9000-bot"];
+var hail = "We are the Borg. Lower your shields and surrender your ships. We will add your biolgical and technological distinctivness to our own. Your culture will adapt to service us. Resistance is futile."
+var clogged = "Something clogged up in the tubes. Notify @ " + your_account + "if this issue persists.";
 var google_fail = "An error occured. Some causes could be no results found, Google CSE API is down, or there's a bug in the code.\n\nIf this persists, contact Geoffrey at @PosixMaster#9116.\n\n\nDebug info for Geoffrey:\n```";
 var startup = true;
 var halboot = true;
@@ -160,13 +156,9 @@ var safe_mode = false;
 //Stuff for the voice channel functions.
 var voices = config.channels.voice_id;
 var voice_names = config.channels.voice_name;
-var audio_files = library.audio_file;
-var audio_names = library.audio_name;
-var voice_channel;
-var already_sent = false;
+
 var newVoice = voiceID;
-var audio_playing = false;
-var channelActive = false;
+
 
 //For the !rick command.
 var lyrics = "**Never Gonna Give You Up**\n\nWe're no strangers to love\nYou know the rules and so do I\nA full commitment's what I'm thinking of\nYou wouldn't get this from any other guy\n\nI just wanna tell you how I'm feeling\nGotta make you understand\n\nNever gonna give you up\nNever gonna let you down\nNever gonna run around and desert you\nNever gonna make you cry\nNever gonna say goodbye\nNever gonna tell a lie and hurt you\n\nWe've known each other for so long\nYour heart's been aching, but\nYou're too shy to say it\nInside, we both know what's been going on\nWe know the game and we're gonna play it\n\nAnd if you ask me how I'm feeling\nDon't tell me you're too blind to see\n\nNever gonna give you up\nNever gonna let you down\nNever gonna run around and desert you\nNever gonna make you cry\nNever gonna say goodbye\nNever gonna tell a lie and hurt you\n\nNever gonna give you up\nNever gonna let you down\nNever gonna run around and desert you\nNever gonna make you cry\nNever gonna say goodbye\nNever gonna tell a lie and hurt you\n\n(Ooh, give you up)\n(Ooh, give you up)\nNever gonna give, never gonna give\n(Give you up)\nNever gonna give, never gonna give\n(Give you up)\n\nWe've known each other for so long\nYour heart's been aching, but\nYou're too shy to say it\nInside, we both know what's been going on\nWe know the game and we're gonna play it\n\nI just wanna tell you how I'm feeling\nGotta make you understand\n\nNever gonna give you up\nNever gonna let you down\nNever gonna run around and desert you\nNever gonna make you cry\nNever gonna say goodbye\nNever gonna tell a lie and hurt you\n\nNever gonna give you up\nNever gonna let you down\nNever gonna run around and desert you\nNever gonna make you cry\nNever gonna say goodbye\nNever gonna tell a lie and hurt you\n\nNever gonna give you up\nNever gonna let you down\nNever gonna run around and desert you\nNever gonna make you cry\nNever gonna say goodbye\nNever gonna tell a lie and hurt you";
@@ -177,7 +169,7 @@ var rick = "Command usage:\n\n`!rick <option>`\n\nAvailable options are:\n`roll`
 function reloadConfig(channelID) {
     try {
         config = ini.parse(fs.readFileSync(configFile, 'utf-8'));
-        logger.info("" + configFile + " parsed.")
+        logger.verbose("" + configFile + " parsed.")
     }
     catch(e) {
         throw "Configuration file (" + configFile + ") not found. This file is required for the bot to do anything. Refusing to continue execution."
@@ -191,20 +183,17 @@ function reloadConfig(channelID) {
         bot_name = config.account.bot_name;
         channels = config.account.general;
         voiceID = config.account.default_voice;
+        logger.level = config.controls.loglevel
         voices = config.account.voice_id;
         voice_names = config.account.voice_name;
         audio_player = config.controls.voice;
-        if (audio_player == "yes") {
-            library = ini.parse(fs.readFileSync(songsFile, 'utf-8'));
-            audio_files = library.audio_file;
-            audio_names = library.audio_name;
-        }
         snail_race = config.controls.snail;
         yt_player = config.controls.youtube;
         qodapi = config.controls.quote;
         ttsquote = config.controls.tts;
         googlesearch  = config.controls.googlesearch;
-        whitelist = config.channels.allowed_channels
+        whitelist = config.channels.allowed_channels;
+        maxerrors = Number(config.controls.maxerrors);
         bot.sendMessage({
             to: channelID,
             message: "Reconfiguration success."
@@ -216,7 +205,7 @@ function reloadConfig(channelID) {
     catch(e) {
         bot.sendMessage({
             to: channelID,
-            message: "Error during setting configuration. This script may now be in a very bad, unstable, inconsistent, and unpredictable state. Correct configuration or shut down server immediately.\n```" + e + "```"
+            message: "Error during setting configuration. This script may now be in a very bad, inconsistent, and unpredictable state.\n```" + e + "```"
         })
         safeMode(channelID);
     }
@@ -224,19 +213,22 @@ function reloadConfig(channelID) {
 }
 
 function safeMode(channelID) {
+    songarray = [ songarray[0] ]
     bot.sendMessage({
         to: channelID,
-        message: "!leave"
+        message: "!next"
     });
     safe_mode = true;
     bot.sendMessage({
         to: channelID,
-        message: "Safe mode activated."
+        message: "Safe mode activated. A reduced command set is currently available."
     });
+    lastYT = undefined
+    lastFileAdded = undefined
 }
 
 function normalMode(channelID, success) {
-    var output = "Caution: Safe Mode was automatically activated due to a misconfiguration. However, Safe Mode was manually disabled by the owner. Proceed with caution, as the script may be unstable.";
+    var output = "Caution: Safe Mode was automatically activated due to a misconfiguration or errors. However, Safe Mode was manually disabled by the owner. Proceed with caution, as the script may be unstable.";
     if (success == true) {
         output = "Safe Mode automatically exited. Normal operation has resumed. Have a nice day!"
     }
@@ -262,123 +254,184 @@ function postGenerals(toSend) {
     }
 }
 
-function chooseAudio(parameters, channelID) {
-    try {
-        if (Number(parameters) > -1) {
-            var newIndex = Number(parameters) - 1;
-            if (newIndex < audio_files.length) {
-                playAudio(audio_files[newIndex], channelID, false);
+function downloadVideo(parameters, channelID) {
+    if (lastYT == parameters) {
+        bot.sendMessage({
+            to: channelID,
+            message: "Duplicates are not supported. (The filenames will conflict.) The last request has been cancelled."
+        })
+    }
+    else {
+        lastYT = parameters
+        //logger.debug(output)
+        stream.download(parameters);
+        stream.on("finished", function(err, data) {
+            arrayAdd(data.file, channelID);
+        });
+        stream.on("error", function(error) {
+            audioError(error, channelID);
+        });
+    }
+}
+
+function arrayAdd(mp3, textID) {
+    if (mp3 == lastFileAdded) {
+        logger.debug("Dropping duplicate file addition.")
+    }
+    else {
+        songarray.push({audioFile: mp3, channelID: textID});
+        logger.debug("Adding to buffer file " + mp3)
+        lastFileAdded = mp3;
+    }
+
+    if (voiceLock == false) {
+        songIterate();
+    }
+}
+
+var lastFileAdded;
+
+function songIterate() {
+    bot.leaveVoiceChannel(voiceID, function() {
+        if (voiceLock == true) {
+            bot.leaveVoiceChannel(voiceID);
+            logger.debug("Last file played was " + songarray[0].audioFile);
+            channelID = songarray[0].channelID;
+            var lengthSongs = songarray.length
+            songarray.shift();
+            logger.debug("New length of song buffer is now " + lengthSongs);
+            try {
+                logger.debug("Next file will be " + songarray[0].audioFile)
             }
-            else {
-            var output = "Usage: `!audio <option>`\n\nList of configured options are:\n";
-            var i = 0;
-            for (const value of audio_names) {
-                i++;
-                output = output + String(i) + "   " + value + "\n";
+            catch(e) {
+                logger.debug("Song buffer is empty.")
             }
+        }
+        else if (voiceLock == false) {
             bot.sendMessage({
-                to: channelID,
-                message: output
+                to: songarray[0].channelID,
+                message: "Initializing audio playback."
             });
-            }
+            voiceLock = true;
+            channelID = songarray[0].channelID;
+        }
+        if (songarray.length > 0) {
+            var oldlevel = logger.level
+            logger.level = 'error'
+            bot.disconnect();
+            bot.connect();
+            logger.level = oldlevel
+            setTimeout(function(){
+                playAudio(songarray[0].audioFile, channelID);
+                waitUntil()
+                    .interval(500)
+                    .times(Infinity)
+                    .condition(function() {
+                            return (audioDone == true ? true : false);
+                    })
+                    .done(function() {
+                        audioDone = false;
+                        songIterate();
+                    });
+            }, 5000)
         }
         else {
-            var output = "Usage: `!audio <option>`\n\nList of configured options are:\n";
-            var i = 0;
-            for (const value of audio_names) {
-                i++;
-                output = output + String(i) + "   " + value + "\n";
-            }
             bot.sendMessage({
                 to: channelID,
-                message: output
+                message: "End of playlist reached."
+            }, function() {
+                try {
+                    fs.readdirSync('.').forEach(file => {
+                        if (file.endsWith(".mp3") == true) {
+                            logger.verbose("Cleaning old MP3 file " + file)
+                            fs.unlinkSync(file)
+                        }
+                    });
+                    bot.leaveVoiceChannel(voiceID, function() {
+                        var oldlevel = logger.level
+                        logger.level = 'error'
+                        bot.disconnect();
+                        bot.connect();
+                        logger.level = oldlevel
+                    });
+                }
+                catch (e) {
+                    logger.warn("Leaving VC - " + e)
+                }
+                voiceLock = false;
             });
         }
-    }
-    catch(e) {
-        var voice_channel = "null";
-        audioError(e, channelID, voice_channel);
-    }
-}
-
-function downloadVideo(parameters, channelID) {
-    var output = "Downloading from YouTube. This may take a moment.";
-    logger.debug(output)
-    stream.download(parameters);
-    bot.sendMessage({
-        to: channelID,
-        message: output
-    })
-    stream.on("finished", function(err, data) {
-        playAudio(data.file, channelID, true);
-    });
-    stream.on("error", function(error) {
-        var voice_channel = "null";
-        audioError(error, channelID, voice_channel);
     });
 }
 
-function playAudio(mp3, channelID, erase) {
-    try {
-        audio_playing = true;
-        already_sent = false;
-        voice_channel = voiceID;
-        if (channelActive == false) {
-            bot.sendMessage({
-                to: channelID,
-                message: "Playing `" + mp3 + "`."
-            });
-            //Let's join the voice channel, the ID is whatever your voice channel's ID is.
-            bot.joinVoiceChannel(voice_channel, function(error, events) {
-                //Check to see if any errors happen while joining.
-                if (error) return audioError(error, channelID, voice_channel);
-                //Then get the audio context
-                bot.getAudioContext(voice_channel, function(error, stream) {
-                    //Once again, check to see if any errors exist
-                    if (error) return audioError(error, channelID, voice_channel);
-                    //Create a stream to your file and pipe it to the stream
-                    fs.createReadStream(mp3).pipe(stream, {
-                        end: false
-                    });
-                    //The stream fires `done` when it's got nothing else to send to Discord.
-                    stream.on('done', function() {
-                        bot.leaveVoiceChannel(voice_channel);
-                        if (already_sent == false) {
-                            already_sent = true;
-                            bot.sendMessage({
-                                to: channelID,
-                                message: "End of stream. Web RTC terminated."
-                            });
-                        }
-                        try {
-                            if (erase == true) {
-                                fs.unlinkSync(mp3);
-                            }
-                        }
-                        catch(e) {
-                            logger.info(e);
-                        }
-                        audio_playing = false;
-                        channelActive = false;
-                    });
+function finished(mp3) {
+    bot.leaveVoiceChannel(voiceID, function() {
+        if (alreadyFired == false) {
+            alreadyFired = true;
+            try {
+                fs.unlinkSync(mp3);
+            }
+            catch(e) {
+                logger.warn(e);
+            }
+            audioDone = true
+        }
+    });
+}
+
+function playAudio(mp3, channelID) {
+    bot.leaveVoiceChannel(voiceID, function() {
+        try {
+            bot.joinVoiceChannel(voiceID, function(error, events){
+                if (error) throw error;
+                bot.getAudioContext(voiceID, function(error, stream){
+                    if (error) throw error;
+                    try {
+                        fs.createReadStream(mp3).pipe(stream, {end: false});
+                    }
+                    catch(e) {
+                        audioError(e, channelID)
+                    }
+                    alreadyFired = false;
+                    stream.on('done', function() { finished(mp3) });
                 });
             });
-            channelActive = true;
         }
-    }
-    catch(e) {
-        var voice_channel = "null";
-        audioError("Internal file error.\n" + e, channelID, voice_channel);
-    }
+        catch (e) {
+            audioError(e, channelID);
+        }
+    });
 }
 
-function audioError(error, channelID, voice_channel) {
+function resetErrors() {
+    audioErrors = 0;
+    logger.debug("audioErrors counter reset.")
+}
+
+function audioError(error, channelID) {
+    if (audioErrors == 0) {
+        setTimeout(resetErrors, 120000)
+    }
+    audioErrors++;
     logger.error(error);
     bot.sendMessage({
         to: channelID,
         message: "Error occured playing audio:\n```" + error + "```" 
-    })
-    return "Something happened."
+    }, function() {
+        bot.leaveVoiceChannel(voiceID, function () {
+            bot.disconnect();
+            bot.connect();
+        });
+    });
+    voiceLock = false;
+    if (audioErrors > maxerrors) {
+        bot.sendMessage({
+            to: channelID,
+            message: "Maximum number of errors allowed for timeframe has been exceeded."
+        }, function(channelID) {
+            safeMode(channelID);
+        });
+    }
 }
 
 function deleteLogs(channel_id) {
@@ -422,7 +475,7 @@ var bot = new droid.Client({
     autorun: true,
     token: token
 });
-logger.info("Client created.");
+logger.verbose("Client created.");
 
 function notice(channel_id) {
     logger.warn("Sending notice.");
@@ -449,7 +502,7 @@ function dumpLogs(channel_id) {
         }, function(e, r) {
             turnOff(e, r);
         });
-        logger.info("Logs dumped successfully.");
+        logger.verbose("Logs dumped successfully.");
     } catch (e) {
         logger.warn("Unable to dump logs: " + e);
         bot.sendMessage({
@@ -473,7 +526,7 @@ function turnOff(error, response) {
         exec("sync");
     }
     catch(e) {
-        logger.info("Unable to sync filesystem. Is this perhaps a Windows system?");
+        logger.warn("Unable to sync filesystem. Is this perhaps a Windows system?");
     }
     bot.disconnect();
     bot = undefined;
@@ -499,31 +552,45 @@ function sendSafe(channelID) {
     });
 }
 
+
+var true_startup = true;
+var resetting = false;
+var notifyChannelID;
+
 bot.on("ready", function(event) {
-    logger.info("Socket connected.");
-    logger.info("Logged in as: " + bot.username + " - (" + bot.id + ")");
-    if (startup == true) {
-        startup = false;
-        if (config.account.greet == "yes") {
-            postGenerals(messageGreet());
+    if (true_startup == true) {
+        true_startup == false;
+        logger.verbose("Socket connected.");
+        logger.info("Logged in as: " + bot.username + " - (" + bot.id + ")");
+        if (startup == true) {
+            startup = false;
+            if (config.account.greet == "yes") {
+                postGenerals(messageGreet());
+            }
         }
+        bot.setPresence({
+            game: {
+                name: bot_game
+            }
+        });
     }
-    bot.setPresence({
-        game: {
-            name: bot_game
-        }
-    });
+    else if (resetting == true) {
+        bot.sendMessage({
+            to: notifyChannelID,
+            message: "Reconnect completed."
+        });
+    }
 });
 
 //Failsafe stuff.
 bot.on('disconnect', function(errMsg, code) {
     should = false;
     logger.warn("Client disconnected from Discord.");
-    logger.error(errMsg);
+    logger.warn(errMsg);
     logger.debug(String(code));
-    logger.verbose("Attempting to (re)connect.");
+    logger.info("Attempting to (re)connect.");
     bot.connect();
-    logger.info("Connection attempted.");
+    logger.verbose("Connection attempted.");
     bot.setPresence({
         game: {
             name: bot_game
@@ -545,7 +612,7 @@ bot.on("message", function(user, userID, channelID, message, event) {
             }
             arguments = arguments.splice(1);
             logger.info("Message: " + message + "          Command: " + command + "          Parameters: " + parameters);
-            logger.info("User: " + user + "          userID: " + userID + "          channelID: " + channelID);
+            logger.verbose("User: " + user + "          userID: " + userID + "          to: " + channelID);
             try {
                 if (command == "open") {
                     if (safe_mode == true) {
@@ -558,11 +625,13 @@ bot.on("message", function(user, userID, channelID, message, event) {
                         });
                     };
                 };
-                if (command == "snail" | command == "s") {
+                if (command == "snail" | command == "s" | command == "S" | command == "SNAIL") {
                     if (safe_mode == true) {
                         throw "Command not available in safe mode."
                     }
-                    if (parameters == "race" && snail_race == "yes") {
+                    var race_command;
+                    if (parameters == "race" | parameters == "RACE") { race_command = true; }
+                    if (race_command == true && snail_race == "yes") {
                         bot.sendMessage({
                             to: channelID,
                             message: "!s enter"
@@ -593,7 +662,7 @@ bot.on("message", function(user, userID, channelID, message, event) {
                             message: cow
                         },
                         function(error, response) {
-                            logger.info(response);
+                            logger.verbose(response);
                         });
                 }
                 if (command == "shutdown") {
@@ -610,6 +679,8 @@ bot.on("message", function(user, userID, channelID, message, event) {
                     reloadConfig(channelID);
                 }
                 if (command == "reset") {
+                    notifyChannelID = channelID;
+                    resetting = true;
                     bot.disconnect();
                 }
                 if (command == "clear") {
@@ -633,7 +704,7 @@ bot.on("message", function(user, userID, channelID, message, event) {
                         throw "Command not available in safe mode."
                     }
                     if (Number(parameters) > 0) {
-                        logger.info("xkcd Comic#: " + parameters);
+                        logger.debug("xkcd Comic#: " + parameters);
                         xkcd.get(parameters, function(error, response) {
                             if (error) {
                                 var output = clogged + "\nThe exact error returned from `xkcd-api` was:\n```" + error + "```";
@@ -643,7 +714,7 @@ bot.on("message", function(user, userID, channelID, message, event) {
                                 });
                                 logger.warn("xkcd error:          " + error);
                             } else {
-                                logger.info("xkcd response:          " + response);
+                                logger.debug("xkcd response:          " + response);
                                 var title = response.safe_title;
                                 var id = response.num;
                                 var img = response.img;
@@ -669,7 +740,7 @@ bot.on("message", function(user, userID, channelID, message, event) {
                                 });
                                 logger.warn("xkcd error:          " + error);
                             } else {
-                                logger.info("xkcd response:          " + response);
+                                logger.debug("xkcd response:          " + response);
                                 var title = response.safe_title;
                                 var id = response.num;
                                 var img = response.img;
@@ -692,7 +763,7 @@ bot.on("message", function(user, userID, channelID, message, event) {
                                 });
                                 logger.warn("xkcd error:          " + error);
                             } else {
-                                logger.info("xkcd response:          " + response);
+                                logger.debug("xkcd response:          " + response);
                                 var title = response.safe_title;
                                 var id = response.num;
                                 var img = response.img;
@@ -714,7 +785,7 @@ bot.on("message", function(user, userID, channelID, message, event) {
                     if (googlesearch != "yes") {
                         throw "Google Search has been disabled by the bot owner."
                     }
-                    logger.info("Google query: " + parameters);
+                    logger.debug("Google query: " + parameters);
                     googleSearch.build({
                             q: parameters,
                             start: 5,
@@ -736,7 +807,7 @@ bot.on("message", function(user, userID, channelID, message, event) {
                                 snippet = results.items[0].snippet;
                                 url = results.items[0].link;
                                 output = "**" + title + "**\n\n*" + snippet + "*\n\n" + url + "\n\nMore results: https://www.google.co.th/search?q=" + encodeURI(parameters) + "\n\n";
-                                logger.info("Google response:          " + response);
+                                logger.debug("Google response:          " + response);
                             } catch (e) {
                                 output = google_fail + e + "```";
                                 logger.warn("Google error:          " + error);
@@ -799,7 +870,7 @@ bot.on("message", function(user, userID, channelID, message, event) {
                     }
                     bot.sendMessage({
                         to: channelID,
-                        message: hail
+                        message: "*Dev's note: This function was created back when this bot was spread across three accounts and designed for a single server. This message used to be sent from an account called The Borg Collective. It's probably less impressive now.*\n\n" + hail
                     });
                 }
                 if (command == "videos") {
@@ -822,32 +893,35 @@ bot.on("message", function(user, userID, channelID, message, event) {
                     fetch('http://quotes.rest/qod.json?category=funny').then(res => res.json()).then(body => postQuote(channelID, parameters, body.contents.quotes[0].quote));
                 }
                 if (command == "audio") {
-                    if (safe_mode == true) {
-                        throw "Command not available in safe mode."
-                    }
-                    if (audio_player != "yes") {
-                        throw "Function is disabled by bot owner."
-                    }
-                    voiceID = newVoice;
-                    chooseAudio(parameters, channelID);
+                    bot.sendMessage({
+                        to: channelID,
+                        message: "The whole local audio file playback system has been removed. It was next to useless."
+                    });
                 }
-                if (command == "leave") {
+                if (command == "next") {
                     if (audio_player != "yes" && yt_player != "yes") {
                         throw "Function is disabled by bot owner."
                     }
                     try {
-                        already_sent = true;
-                        bot.leaveVoiceChannel(voiceID);
-                        bot.sendMessage({
-                            to: channelID,
-                            message: "Web RTC terminated on request of user " + user
-                        })
+                        if (voiceLock == true) {
+                            bot.leaveVoiceChannel(voiceID);
+                            bot.sendMessage({
+                                to: channelID,
+                                message: "Web RTC terminated on request of user " + user
+                            }, function() {
+                                var oldlevel = logger.level
+                                logger.level = "error"
+                                bot.disconnect()
+                                bot.connect()
+                                logger.level = oldlevel
+                            });
+                        }
                     }
                     catch(e) {
                         bot.sendMessage({
                             to: channelID,
                             message: "Unable to leave voice channel. Is " + bot_name + " even in it?\n" + e
-                        })
+                        });
                     }
                 }
                 if (command == "set_voice") {
@@ -857,8 +931,8 @@ bot.on("message", function(user, userID, channelID, message, event) {
                     if (audio_player != "yes" && yt_player != "yes") {
                         throw "Function is disabled by bot owner."
                     }
-                    if (audio_playing == true) {
-                        throw "Refusing to change voice channel while audio stream is active, as it can lead to annoying side effects.";
+                    if (voiceLock == true) {
+                        throw "Refusing to change voice channel while audio stream is active, as it can lead to side effects.";
                     }
                     try {
                         if (parameters.length == 18) {
@@ -889,7 +963,7 @@ bot.on("message", function(user, userID, channelID, message, event) {
                     if (audio_player != "yes" && yt_player != "yes") {
                         throw "Function is disabled by bot owner."
                     }
-                    if (audio_playing == true) {
+                    if (voiceLock == true) {
                         throw "Refusing to change voice channel while audio stream is active, as it can lead to annoying side effects.";
                     }
                     try {
@@ -938,6 +1012,26 @@ bot.on("message", function(user, userID, channelID, message, event) {
                         message: output
                     });
                 }
+                if (command == "playlist") {
+                    var songsout = "List of audio files currently in playlist:\n";
+                    var t = 0;
+                    for (const s of songarray) {
+                        t++;
+                        songsout = songsout + String(t) + ' `' + s.audioFile + '`\n'
+                    }
+                    if (t > 0) {
+                        bot.sendMessage({
+                            to: channelID,
+                            message: songsout
+                        });
+                    }
+                    else {
+                        bot.sendMessage({
+                            to: channelID,
+                            message: "Playlist is empty."
+                        })
+                    }
+                }
                 if (command == "stream") {
                     if (safe_mode == true) {
                         throw "Command not available in safe mode."
@@ -945,10 +1039,14 @@ bot.on("message", function(user, userID, channelID, message, event) {
                     if (yt_player != "yes") {
                         throw "Function is disabled by bot owner."
                     }
-                    if (audio_playing == true) {
+                    /*if (audio_playing == true) {
                         throw "Audio is already playing.";
-                    }
+                    }*/
                     voiceID = newVoice;
+                    bot.sendMessage({
+                        to: channelID,
+                        message: "Adding YouTube video with ID `" + parameters + "` to download list. It may take a bit to download."
+                    });
                     downloadVideo(parameters, channelID);
                 }
                 if (command == "yt") {
@@ -958,19 +1056,27 @@ bot.on("message", function(user, userID, channelID, message, event) {
                     if (yt_player != "yes") {
                         throw "Function is disabled by bot owner."
                     }
-                    if (audio_playing == true) {
+                    /*if (audio_playing == true) {
                         throw "Audio is already playing.";
-                    }
+                    }*/
                     search(parameters, opts, function(err, results) {
-                        if(err) throw err;
-                       
-                        voiceID = newVoice;
-                        downloadVideo(results[0].id, channelID);
-                        bot.sendMessage({
-                            to: channelID,
-                            message: "Found " + results[0].title + " uploaded by " + results[0].channelTitle + "."
-                        });
-                      });
+                        if(err) {
+                            logger.error("Error occured while executing command: " + String(err));
+                            bot.sendMessage({
+                                to: channelID,
+                                message: "Error occured while executing command: `" + String(err) + "`"
+                            });
+                        }
+                        else {
+                            voiceID = newVoice;
+                            var name = results[0].channelTitle + " - " + results[0].title;
+                            downloadVideo(results[0].id, channelID);
+                            bot.sendMessage({
+                                to: channelID,
+                                message: "Found `" + results[0].title + "` uploaded by `" + results[0].channelTitle + "`. Downloading from YouTube. Please be patient."
+                            });
+                        }
+                    });
                 }
                 if (command == "safemode" && safe_mode == false) {
                     if (userID == owner) {
