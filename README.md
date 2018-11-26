@@ -121,8 +121,10 @@ allowed_channels[] = 304070211139665920
 `language = ` - Language of search results. Example: `lang_en`. Only required to use `!search` command.  
 
 #### `[audio]`
-`ffmpeg = ` - Path to an [FFMpeg](https://www.ffmpeg.org/) binary. On most Linux distributions and on many *nix systems will be `/usr/bin/ffmpeg`. Requires FFMpeg [to be installed](https://www.ffmpeg.org/download.html). Only required to use audio functionality.  
-`youtube_key = ` - [YouTube Data API v3 key](https://developers.google.com/youtube/v3/). Only required for YouTube audio streaming functionality.
+`ffmpeg = ` - Path to an [FFMpeg](https://www.ffmpeg.org/) binary. On most Linux distributions and on many \*nix systems will be `/usr/bin/ffmpeg`. Requires FFMpeg [to be installed](https://www.ffmpeg.org/download.html). Only required to use audio functionality.  
+`youtube_key = ` - [YouTube Data API v3 key](https://developers.google.com/youtube/v3/). Only required for YouTube audio streaming functionality.   
+`loglevel = ` - Defines how noisy the Winston logger should be during operation.
+`maxerrors = ` - Specifies the maximum number of audio-related errors should be allowed within two minutes before safe mode is automatically entered.
 
 ### Songs list Store
 
