@@ -141,10 +141,18 @@ audio_name[] = Gourmet Race from Kirby SuperStar
 ### Standard commands:
 `!help` - Shows this help text.    
 `!quote` - Displays funny quote-of-the-day from the [Quotes REST API](https://quotes.rest/). Add the `tts` paramter to use Discord's `/tts` feature with it.  
-`!search <query>` - Display the first Google result for that query in the chat.  
+`!search <query>` - Displays the first Google result for that query in the chat.  
 `!xkcd [comic # or 'random' ]` - Fetch latest [xkcd comic](http://xkcd.com), specify number to show spcified comic, or specify random to get random comic.  
 `!rick [parameter]` - Instant RickRoll. Available options include a YouTube link, text lyrics, or a GIF.  
 `!s race` or `!snail race` - Starts a normal Snail Race, but the bot also joins automatically. Requires the Snail Racing bot.  
+### Math commands:
+`!roll [number of faces]` - Rolls a die, optionally with a specified number of faces. If no number of faces is given, then a standard six-faced die is rolled.   
+`!gmean <value> <value>` - Calculates the geometric mean of the two given values.   
+`!trig <angle in decimal degrees>` - Calculates the three main trig ratios for the given angle.
+`!hypot <leg> <leg>` - Calculates the hypotenuse of a right triangle given the two leg lengthes.   
+`!leg <known leg> <hypotenuse>` - Calculates the missing leg of a right triangle given a known leg and the hypotenuse.
+
+### Stupid commands:
 `!open the pod bay doors` - Try it.  
 `!moo` - Same as [Debian Linux's `apt-get moo` command](https://unix.stackexchange.com/questions/92185/whats-the-story-behind-super-cow-powers).
 
