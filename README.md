@@ -106,7 +106,7 @@ allowed_channels[] = 304070211139665920
 ```   
 
 #### `[controls]`
-`prefix = ` - Changes the default `!` command marker.
+`prefix = ` - Changes the default `!` command marker. For instance, setting it to `>` would mean that commands would start with `>` instead of `!`.   
 `snail = ` - Toggles Snail Racing integration. Requires the [Snail Racing bot to be present](https://bots.discord.pw/bots/256556410031046657).  
 `youtube = ` - Toggles YouTube audio streaming functionality. Requires YouTube Data APIv3 key.  
 `googlesearch = ` - Toggles Google Search functionality. Requires both a Google API key and a Google Custom Search Engine key.  
