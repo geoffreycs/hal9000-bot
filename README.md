@@ -7,7 +7,7 @@
 * Retrieve [xkcd](http://www.xkcd.com) webcomics.
 * Instant [Rick Roll](https://en.wikipedia.org/wiki/Rickrolling).
 * Automatically join Snail Races if your server has [the Snail Racing bot](https://bots.discord.pw/bots/256556410031046657).
-* Stream local audio files into voice channels.
+* Perform math calculations.
 * Stream YouTube into voice channels.
 * Reload the configuration store without restarting the bot.
 * Automatically enters Safe Mode if the reloaded configuration is invalid.
@@ -24,15 +24,17 @@ You can join my Discord server which has HAL9000 running already: <https://disco
 ## HAL9000 Uses
 
 * The practically magical library [Discord.io](https://github.com/izy521/discord.io) by [izy521](https://github.com/izy521), specifically the [gateway v6 fork](https://github.com/Woor/discord.io/tree/gateway_v6) by [Woor](https://github.com/Woor)
-* [75lb](https://www.npmjs.com/~75lb)'s [command-line-arguments](https://www.npmjs.com/package/command-line-args)
+* [command-line-arguments](https://www.npmjs.com/package/command-line-args) by [75lb](https://www.npmjs.com/~75lb)
 * [google-search](https://www.npmjs.com/package/google-search) by [Aykut Yaman](https://www.npmjs.com/~aykutyaman)
 * An aptly-named INI parser called [ini](https://www.npmjs.com/package/ini) written by [isaacs](https://www.npmjs.com/~isaacs)
 * [node-fetch](https://www.npmjs.com/package/node-fetch) by [Timothy Gu](https://www.npmjs.com/~timothygu) and [David Frank, AKA bitinn](https://www.npmjs.com/~bitinn)
 * [sync-exec](https://www.npmjs.com/package/sync-exec) by [gvarsanyi](https://www.npmjs.com/~gvarsanyi)
+* [tiny-worker](https://www.npmjs.com/package/tiny-worker) by [Jason Mulligan](https://www.npmjs.com/~avoidwork)
 * The [Winston](https://www.npmjs.com/package/winston) logging library by [serveral people](https://www.npmjs.com/package/winston/access)
 * [xkcd-api](https://www.npmjs.com/package/xkcd-api) by [sidhantpanda](https://www.npmjs.com/~sidhantpanda)
 * [Youtube MP3 Downloader](https://www.npmjs.com/package/youtube-mp3-downloader) by [ytb2mp3](https://github.com/ytb2mp3)
 * [youtube-search](https://www.npmjs.com/package/youtube-search) by [maxgfeller](https://www.npmjs.com/~maxgfeller)
+* An [Asm.js](http://asmjs.org) module written by [Dave Herman](https://gist.github.com/dherman) for [quickly calculating the geometric mean of two values](https://gist.github.com/dherman/3d0b4733303eaf4bae5e)
 * [FFmpeg](https://www.ffmpeg.org/) by [The FFmpeg project](https://www.ffmpeg.org/contact.html#MailingLists)
 
 ## Installation
@@ -64,14 +66,10 @@ Once configuration is complete, it is now time to run your bot, granted that you
 ### Options
 ```--config``` - Allows user to specify an INI configuration file. Not required.  
 ```./path/to/config/file.ini``` - Path to INI configuration file. May be passed with or without `--config` flag. If not passed, configuration file defaults to `./config.ini`.  
-```--songs <./path/to/songs/file.ini>``` - Allows user to specify an INI song list. Only required for local audio functionality. If not passed, songs file defaults to `songs.ini`.
 ### Examples
 ```
 $ node bot.js --config alt.ini
-$ node bot.js --config alt.ini --songs classical.ini
 $ node bot.js alt.ini 
-$ node bot.js alt.ini --songs classical.ini
-$ node bot.js --songs classical.ini
 $ node bot.js
 ```
 
@@ -108,6 +106,7 @@ allowed_channels[] = 304070211139665920
 ```   
 
 #### `[controls]`
+`prefix = ` - Changes the default `!` command marker.
 `snail = ` - Toggles Snail Racing integration. Requires the [Snail Racing bot to be present](https://bots.discord.pw/bots/256556410031046657).  
 `youtube = ` - Toggles YouTube audio streaming functionality. Requires YouTube Data APIv3 key.  
 `googlesearch = ` - Toggles Google Search functionality. Requires both a Google API key and a Google Custom Search Engine key.  
